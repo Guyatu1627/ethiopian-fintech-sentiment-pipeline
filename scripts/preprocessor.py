@@ -1,36 +1,42 @@
 import pandas as pd
-import re
+import logging
 
 class DataPreprocessor:
-    @staticmethod
-    def process(df):
-        """Standardized cleaning pipeline for financial reviews."""
-        if df.empty:
-            return df
+    def __init__(self):
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+
+    def process(self, df):
+        """
+        Cleans the raw scraped data into an analysis-ready format.
+        """
+        initial_count = len(df)
         
-        # 1. Deduplication based on unique Review ID
-        df = df.drop_duplicates(subset=['reviewId'])
+        # 3a. Remove duplicate reviews based on ID (if ID was collected)
+        # If scraper doesn't provide 'at' or 'reviewId', use 'content' and 'at'
+        if 'reviewId' in df.columns:
+            df = df.drop_duplicates(subset=['reviewId'])
         
-        # 2. Handling Missing Values (Critical for NLP)
-        # We drop rows where the review 'content' is missing
-        df = df.dropna(subset=['content'])
-        
-        # 3. Temporal Normalization (YYYY-MM-DD)
+        # 3b. Handle missing values
+        # Drop rows missing review text (content) or rating (score)
+        df = df.dropna(subset=['content', 'score'])
+        missing_count = initial_count - len(df)
+        self.logger.info(f"Dropped {missing_count} rows due to missing data/duplicates.")
+
+        # 3c. Normalize dates to YYYY-MM-DD
         df['at'] = pd.to_datetime(df['at'])
         df['date'] = df['at'].dt.strftime('%Y-%m-%d')
+
+        # 3d. Rename and select columns to match the 5 required: 
+        # [review, rating, date, bank, source]
+        df = df.rename(columns={
+            'content': 'review',
+            'score': 'rating'
+        })
         
-        # 4. Text Standardization
-        # Lowercasing and removing noise (URLs, emojis, special chars)
-        def clean_text(text):
-            text = str(text).lower()
-            text = re.sub(r"(@\[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)|^rt|http.+?", "", text)
-            return text.strip()
+        # Ensure source column exists
+        df['source'] = 'Google Play'
         
-        df['content'] = df['content'].apply(clean_text)
+        final_df = df[['review', 'rating', 'date', 'bank', 'source']]
         
-        # 5. Requirement Alignment: Rename columns to match challenge doc
-        df = df.rename(columns={'content': 'review', 'score': 'rating'})
-        
-        # Select only required columns
-        required_cols = ['review', 'rating', 'date', 'bank', 'source']
-        return df[required_cols]
+        return final_df
