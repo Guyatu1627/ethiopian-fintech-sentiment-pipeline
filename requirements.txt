@@ -1,0 +1,7 @@
+pandas
+google-play-scraper
+streamlit
+textblob
+matplotlib
+seaborn
+scikit-learn
