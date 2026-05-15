@@ -5,3 +5,7 @@ textblob
 matplotlib
 seaborn
 scikit-learn
+sqlalchemy
+psycopg2-binary
+pytest
+nltk
