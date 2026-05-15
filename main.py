@@ -1,32 +1,19 @@
-from scripts.data_loader import scrape_bank_data
+from scripts.data_loader import get_bank_reviews
 from scripts.preprocessor import DataPreprocessor
-import os
+from scripts.database_manager import DBManager
 
-# Configuration
-BANKS = {
-    'CBE': 'com.cbe.cbebirr',
-    'BOA': 'com.boamobile.android',
-    'Dashen': 'com.dashenbank.mobile'
-}
+BANKS = {'CBE': 'com.cbe.cbebirr', 'BOA': 'com.boamobile.android', 'Dashen': 'com.dashenbank.mobile'}
 
-def run_task_1():
+def run_pipeline():
     # 1. Scrape
-    print("Step 1: Scraping 400+ reviews per bank...")
-    raw_data = scrape_bank_data(BANKS)
-    
+    raw_df = get_bank_reviews(BANKS)
     # 2. Preprocess
-    print("Step 2: Preprocessing data...")
-    processor = DataPreprocessor()
-    clean_data = processor.process(raw_data)
-    
-    # 3. Save to CSV (Note: data/ is ignored by git)
-    if not os.path.exists('data'):
-        os.makedirs('data')
-        
-    output_path = 'data/cleaned_reviews.csv'
-    clean_data.to_csv(output_path, index=False)
-    print(f"Task 1 Complete. Dataset saved to {output_path}")
-    print(f"Total reviews collected: {len(clean_data)}")
+    clean_df = DataPreprocessor.clean(raw_df)
+    # 3. Save locally (Ignored by Git)
+    clean_df.to_csv('data/cleaned_reviews.csv', index=False)
+    # 4. Save to DB
+    db = DBManager('postgres', 'YOUR_PASSWORD', 'localhost', '5432', 'bank_analytics')
+    db.save(clean_df, 'reviews')
 
 if __name__ == "__main__":
-    run_task_1()
+    run_pipeline()
